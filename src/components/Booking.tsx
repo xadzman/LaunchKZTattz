@@ -329,7 +329,14 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               className="w-full text-lg"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Booking Request'}
-            </Button>
+              <div className="mt-3">
+  <ReCAPTCHA
+    ref={recaptchaRef}
+    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+    onChange={(token) => setRecaptchaToken(token || '')}
+  />
+</div>
+ </Button>
             <div className="mt-4">
             <label className="block mb-2 font-semibold">Reference images (optional)</label>
             <ImageUploader onUploaded={setReferenceUrls} />
