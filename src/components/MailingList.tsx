@@ -4,7 +4,8 @@ import ReCAPTCHA from 'react-google-recaptcha';
 import Section from './Section';
 import Button from './Button';
 import { supabase } from '../lib/supabase';
-import { addSubscriber } from '../lib/db';
+// If you plan to switch to the helper later:
+// import { addSubscriber } from '../lib/db';
 
 export default function MailingList() {
   const [email, setEmail] = useState('');
@@ -42,7 +43,9 @@ export default function MailingList() {
         {
           email,
           gdpr_consent: consent,
-          gdpr_consent_text: 'Email me updates about promotions, flash days and events.',
+          gdpr_consent_text:
+            'Email me updates about promotions, flash days and events.',
+          promo_tag: seasonalPromo || null,
         },
       ]);
 
@@ -51,13 +54,15 @@ export default function MailingList() {
       setIsSuccess(true);
       recaptchaRef.current?.reset();
 
+      // Reset the form shortly after success
       setTimeout(() => {
         setIsSuccess(false);
         setEmail('');
         setConsent(false);
+        setSeasonalPromo('');
       }, 3000);
-    } catch (error) {
-      console.error('Error subscribing to mailing list:', error);
+    } catch (err) {
+      console.error('Error subscribing to mailing list:', err);
       setError('Failed to subscribe. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -74,7 +79,7 @@ export default function MailingList() {
 
           <h2 className="mb-4">Stay in the Loop</h2>
           <p className="text-lg text-text-muted mb-8">
-            Exclusive offers, flash drops & events — be the first to know.
+            Exclusive offers, flash drops &amp; events — be the first to know.
           </p>
 
           {isSuccess ? (
@@ -86,8 +91,9 @@ export default function MailingList() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email */}
               <div>
-                <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                <input
                   type="email"
                   value={email}
                   onChange={(e) => {
@@ -95,13 +101,14 @@ export default function MailingList() {
                     setError('');
                   }}
                   placeholder="Enter your email address"
-                  className="input-field text-center w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   required
+                  className="input-field text-center w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                 />
               </div>
 
+              {/* Consent */}
               <div className="flex items-start gap-3 justify-center">
-                <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                <input
                   type="checkbox"
                   id="emailConsent"
                   checked={consent}
@@ -109,14 +116,18 @@ export default function MailingList() {
                     setConsent(e.target.checked);
                     setError('');
                   }}
-             className="checkbox-field mt-1 w-4 h-4 rounded border-white/20 bg-white/5"
                   required
+                  className="checkbox-field mt-1 w-4 h-4 rounded border-white/20 bg-white/5"
                 />
-                <label htmlFor="emailConsent" className="text-sm text-text-muted text-left max-w-md">
+                <label
+                  htmlFor="emailConsent"
+                  className="text-sm text-text-muted text-left max-w-md"
+                >
                   Email me updates about promotions, flash days and events.
                 </label>
               </div>
 
+              {/* reCAPTCHA */}
               <div className="flex justify-center">
                 <ReCAPTCHA
                   ref={recaptchaRef}
@@ -125,10 +136,12 @@ export default function MailingList() {
                 />
               </div>
 
+              {/* Error */}
               {error && (
                 <p className="text-red-400 text-sm text-center">{error}</p>
               )}
 
+              {/* Submit */}
               <Button
                 type="submit"
                 variant="primary"
@@ -137,10 +150,17 @@ export default function MailingList() {
               >
                 {isSubmitting ? 'Subscribing...' : 'Subscribe'}
               </Button>
+
+              {/* Promo tag */}
               <div className="mt-3">
-              <label className="block mb-1 text-sm">Promo tag (optional)</label>
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400" className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400" value={seasonalPromo} onChange={e=>setSeasonalPromo(e.target.value)} placeholder="e.g. spooky-2025" />
-            </div>
+                <label className="block mb-1 text-sm">Promo tag (optional)</label>
+                <input
+                  value={seasonalPromo}
+                  onChange={(e) => setSeasonalPromo(e.target.value)}
+                  placeholder="e.g. spooky-2025"
+                  className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                />
+              </div>
             </form>
           )}
         </div>

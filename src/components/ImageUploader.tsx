@@ -65,7 +65,7 @@ export default function ImageUploader({ bucket='booking_ref_images', folder='ref
         <div style={{ marginTop: 8 }}>
           <button className="px-4 py-2 rounded bg-cyan-400 text-black font-bold" onClick={uploadAll} disabled={uploading}>
             {uploading ? 'Uploading…' : `Upload ${files.length} image(s)`}
-          </Button>
+          </button>
         </div>
       )}
       {!!urls.length && (
