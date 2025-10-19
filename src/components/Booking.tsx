@@ -23,7 +23,6 @@ export default function Booking() {
     preferredDate: '',
     gdprConsent: false,
   });
-
   const [recaptchaToken, setRecaptchaToken] = useState('');
   const recaptchaRef = useRef<ReCAPTCHA>(null);
 
