@@ -23,7 +23,11 @@ export default function Booking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const recaptchaRef = useRef<ReCAPTCHA onChange={(token)=> setRecaptchaToken(token || '')}>(null);
+  const recaptchaRef = useRef<ReCAPTCHA
+  ref={recaptchaRef}
+  sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+  onChange={(token) => setRecaptchaToken(token || '')}
+/>(null);
 
   const handleChange = (
     e: React.ChangeEvent<

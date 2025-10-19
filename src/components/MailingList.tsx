@@ -95,7 +95,7 @@ export default function MailingList() {
                     setError('');
                   }}
                   placeholder="Enter your email address"
-                  className="input-field text-center"
+                  className="input-field text-center w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   required
                 />
               </div>
@@ -109,7 +109,7 @@ export default function MailingList() {
                     setConsent(e.target.checked);
                     setError('');
                   }}
-                  className="checkbox-field mt-1"
+             className="checkbox-field mt-1 w-4 h-4 rounded border-white/20 bg-white/5"
                   required
                 />
                 <label htmlFor="emailConsent" className="text-sm text-text-muted text-left max-w-md">
@@ -139,7 +139,7 @@ export default function MailingList() {
               </Button>
               <div className="mt-3">
               <label className="block mb-1 text-sm">Promo tag (optional)</label>
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400" className="w-full p-2 rounded border border-white/10 bg-white/5" value={seasonalPromo} onChange={e=>setSeasonalPromo(e.target.value)} placeholder="e.g. spooky-2025" />
+              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400" className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400" value={seasonalPromo} onChange={e=>setSeasonalPromo(e.target.value)} placeholder="e.g. spooky-2025" />
             </div>
             </form>
           )}
