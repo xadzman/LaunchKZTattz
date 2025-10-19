@@ -1,12 +1,13 @@
-import { useRef, useState } from 'react';
+// src/components/Booking.tsx
+import { useRef, useState, FormEvent } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
-import { useState, FormEvent, useRef } from 'react';
 import { Check } from 'lucide-react';
-import ReCAPTCHA from 'react-google-recaptcha';
+
 import Section from './Section';
 import Button from './Button';
-import { supabase } from '../lib/supabase';
 import ImageUploader from './ImageUploader';
+
+import { supabase } from '../lib/supabase';
 import { addBookingRequest } from '../lib/db';
 import { verifyRecaptcha } from '../lib/recaptcha';
 
@@ -22,22 +23,18 @@ export default function Booking() {
     preferredDate: '',
     gdprConsent: false,
   });
+
+  const [recaptchaToken, setRecaptchaToken] = useState('');
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
-const [recaptchaToken, setRecaptchaToken] = useState('');
-  sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-  onChange={(token) => setRecaptchaToken(token || '')}
-/>(null);
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
+    const { name, value, type, checked } = e.target as HTMLInputElement;
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -50,9 +47,7 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
+    if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
@@ -66,13 +61,9 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
       newErrors.tattooIdea = 'Please provide at least 20 characters';
     }
 
-    if (!formData.placement.trim()) {
-      newErrors.placement = 'Placement is required';
-    }
+    if (!formData.placement.trim()) newErrors.placement = 'Placement is required';
 
-    if (!formData.gdprConsent) {
-      newErrors.gdprConsent = 'You must consent to be contacted';
-    }
+    if (!formData.gdprConsent) newErrors.gdprConsent = 'You must consent to be contacted';
 
     return newErrors;
   };
@@ -86,39 +77,45 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
       return;
     }
 
-    const recaptchaValue = recaptchaRef.current?.getValue();
-    if (!recaptchaValue) {
+    if (!recaptchaToken) {
       setErrors({ recaptcha: 'Please complete the reCAPTCHA' });
       return;
     }
 
     setIsSubmitting(true);
+    setErrors({});
 
     try {
-      const bookingRef = `BK-${Date.now().toString(36).toUpperCase()}`;
+      // 1) Verify reCAPTCHA server-side (Edge Function)
+      const vr = await verifyRecaptcha(recaptchaToken);
+      if (!vr?.success || (vr.score ?? 0) < 0.5) {
+        throw new Error('reCAPTCHA failed, please retry');
+      }
 
-      const { error } = await supabase.from('bookings').insert([
-        {
-          booking_reference: bookingRef,
-          full_name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone || null,
-          tattoo_idea: formData.tattooIdea,
-          placement: formData.placement,
-          budget: formData.budget || null,
-          preferred_date: formData.preferredDate || null,
-          gdpr_consent: formData.gdprConsent,
-          gdpr_consent_text: 'I agree to be contacted regarding my enquiry.',
-        },
-      ]);
+      // 2) Insert booking via helper into `booking_requests`
+      const inserted = await addBookingRequest({
+        full_name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        tattoo_idea: formData.tattooIdea,
+        placement: formData.placement,
+        budget: formData.budget || undefined,
+        preferred_date: formData.preferredDate || undefined,
+        reference_image_urls: referenceUrls,
+        consent_marketing: formData.gdprConsent,
+      });
 
-      if (error) throw error;
+      // 3) Fire-and-forget email notification
+      supabase.functions
+        .invoke('send-booking-email', { body: { booking: inserted } })
+        .catch(() => {});
 
       setIsSuccess(true);
       recaptchaRef.current?.reset();
-    } catch (error) {
+      setRecaptchaToken('');
+    } catch (error: any) {
       console.error('Error submitting booking:', error);
-      setErrors({ submit: 'Failed to submit booking. Please try again.' });
+      setErrors({ submit: error?.message || 'Failed to submit booking. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -133,9 +130,8 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
           </div>
           <h2 className="mb-4">Booking Request Received</h2>
           <p className="text-lg text-text-muted mb-8">
-            Thank you for your enquiry! We'll review your request and get back to
-            you within 24-48 hours to discuss your tattoo and schedule a
-            consultation.
+            Thank you for your enquiry! We&apos;ll review your request and get back to
+            you within 24–48 hours to discuss your tattoo and schedule a consultation.
           </p>
           <Button
             variant="secondary"
@@ -151,6 +147,7 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
                 preferredDate: '',
                 gdprConsent: false,
               });
+              setReferenceUrls([]);
             }}
           >
             Submit Another Booking
@@ -166,7 +163,7 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
         <div>
           <h2 className="mb-4">Book Your Session</h2>
           <p className="text-lg text-text-muted mb-8">
-            Ready to start your next piece? Let's make it unforgettable.
+            Ready to start your next piece? Let&apos;s make it unforgettable.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -174,14 +171,14 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <label htmlFor="fullName" className="block text-sm font-medium mb-2">
                 Full Name *
               </label>
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              <input
                 type="text"
                 id="fullName"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                className="input-field"
                 required
+                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
               {errors.fullName && (
                 <p className="text-red-400 text-sm mt-1">{errors.fullName}</p>
@@ -192,14 +189,14 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <label htmlFor="email" className="block text-sm font-medium mb-2">
                 Email *
               </label>
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              <input
                 type="email"
                 id="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="input-field"
                 required
+                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
               {errors.email && (
                 <p className="text-red-400 text-sm mt-1">{errors.email}</p>
@@ -210,13 +207,13 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <label htmlFor="phone" className="block text-sm font-medium mb-2">
                 Phone
               </label>
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              <input
                 type="tel"
                 id="phone"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="input-field"
+                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
             </div>
 
@@ -224,14 +221,14 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <label htmlFor="tattooIdea" className="block text-sm font-medium mb-2">
                 Tattoo Idea * (min 20 characters)
               </label>
-              <textarea className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              <textarea
                 id="tattooIdea"
                 name="tattooIdea"
                 value={formData.tattooIdea}
                 onChange={handleChange}
                 rows={4}
-                className="textarea-field"
                 required
+                className="textarea-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
               {errors.tattooIdea && (
                 <p className="text-red-400 text-sm mt-1">{errors.tattooIdea}</p>
@@ -242,15 +239,15 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <label htmlFor="placement" className="block text-sm font-medium mb-2">
                 Placement *
               </label>
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              <input
                 type="text"
                 id="placement"
                 name="placement"
                 value={formData.placement}
                 onChange={handleChange}
-                className="input-field"
                 placeholder="e.g., Upper arm, Back, Chest"
                 required
+                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
               {errors.placement && (
                 <p className="text-red-400 text-sm mt-1">{errors.placement}</p>
@@ -266,7 +263,7 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
                 name="budget"
                 value={formData.budget}
                 onChange={handleChange}
-                className="input-field"
+                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               >
                 <option value="">Select a budget range</option>
                 <option value="50-150">£50 - £150</option>
@@ -280,25 +277,25 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <label htmlFor="preferredDate" className="block text-sm font-medium mb-2">
                 Preferred Date
               </label>
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              <input
                 type="date"
                 id="preferredDate"
                 name="preferredDate"
                 value={formData.preferredDate}
                 onChange={handleChange}
-                className="input-field"
+                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
               />
             </div>
 
             <div className="flex items-start gap-3">
-              <input className="w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              <input
                 type="checkbox"
                 id="gdprConsent"
                 name="gdprConsent"
                 checked={formData.gdprConsent}
                 onChange={handleChange}
-                className="checkbox-field mt-1"
                 required
+                className="checkbox-field mt-1 w-4 h-4 rounded border-white/20 bg-white/5"
               />
               <label htmlFor="gdprConsent" className="text-sm text-text-muted">
                 I agree to be contacted regarding my enquiry. *
@@ -308,10 +305,12 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <p className="text-red-400 text-sm">{errors.gdprConsent}</p>
             )}
 
+            {/* reCAPTCHA */}
             <div className="flex justify-center">
-              <ReCAPTCHA onChange={(token)=> setRecaptchaToken(token || '')}
+              <ReCAPTCHA
                 ref={recaptchaRef}
                 sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                onChange={(token) => setRecaptchaToken(token || '')}
                 theme="dark"
               />
             </div>
@@ -322,6 +321,11 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               <p className="text-red-400 text-sm text-center">{errors.submit}</p>
             )}
 
+            <div className="mt-4">
+              <label className="block mb-2 font-semibold">Reference images (optional)</label>
+              <ImageUploader onUploaded={setReferenceUrls} />
+            </div>
+
             <Button
               type="submit"
               variant="primary"
@@ -329,18 +333,7 @@ const [recaptchaToken, setRecaptchaToken] = useState('');
               className="w-full text-lg"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Booking Request'}
-              <div className="mt-3">
-  <ReCAPTCHA
-    ref={recaptchaRef}
-    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-    onChange={(token) => setRecaptchaToken(token || '')}
-  />
-</div>
- </Button>
-            <div className="mt-4">
-            <label className="block mb-2 font-semibold">Reference images (optional)</label>
-            <ImageUploader onUploaded={setReferenceUrls} />
-          </div>
+            </Button>
           </form>
         </div>
 
