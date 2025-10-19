@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+import ReCAPTCHA from 'react-google-recaptcha';
 import { useState, FormEvent, useRef } from 'react';
 import { Check } from 'lucide-react';
 import ReCAPTCHA from 'react-google-recaptcha';
@@ -23,8 +25,8 @@ export default function Booking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const recaptchaRef = useRef<ReCAPTCHA
-  ref={recaptchaRef}
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+const [recaptchaToken, setRecaptchaToken] = useState('');
   sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
   onChange={(token) => setRecaptchaToken(token || '')}
 />(null);
