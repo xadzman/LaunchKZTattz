@@ -1,4 +1,3 @@
-// src/components/Booking.tsx
 import { useRef, useState, FormEvent } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { Check } from 'lucide-react';
@@ -23,8 +22,9 @@ export default function Booking() {
     preferredDate: '',
     gdprConsent: false,
   });
-  const [recaptchaToken, setRecaptchaToken] = useState('');
+
   const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -38,32 +38,24 @@ export default function Booking() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-
     if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
-
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email address';
     }
-
     if (!formData.tattooIdea.trim()) {
       newErrors.tattooIdea = 'Please describe your tattoo idea';
     } else if (formData.tattooIdea.trim().length < 20) {
       newErrors.tattooIdea = 'Please provide at least 20 characters';
     }
-
     if (!formData.placement.trim()) newErrors.placement = 'Placement is required';
-
     if (!formData.gdprConsent) newErrors.gdprConsent = 'You must consent to be contacted';
-
     return newErrors;
   };
 
@@ -85,13 +77,11 @@ export default function Booking() {
     setErrors({});
 
     try {
-      // 1) Verify reCAPTCHA server-side (Edge Function)
       const vr = await verifyRecaptcha(recaptchaToken);
       if (!vr?.success || (vr.score ?? 0) < 0.5) {
         throw new Error('reCAPTCHA failed, please retry');
       }
 
-      // 2) Insert booking via helper into `booking_requests`
       const inserted = await addBookingRequest({
         full_name: formData.fullName,
         email: formData.email,
@@ -104,7 +94,6 @@ export default function Booking() {
         consent_marketing: formData.gdprConsent,
       });
 
-      // 3) Fire-and-forget email notification
       supabase.functions
         .invoke('send-booking-email', { body: { booking: inserted } })
         .catch(() => {});
@@ -130,7 +119,7 @@ export default function Booking() {
           <h2 className="mb-4">Booking Request Received</h2>
           <p className="text-lg text-text-muted mb-8">
             Thank you for your enquiry! We&apos;ll review your request and get back to
-            you within 24–48 hours to discuss your tattoo and schedule a consultation.
+            you within 24–48 hours.
           </p>
           <Button
             variant="secondary"
@@ -162,186 +151,89 @@ export default function Booking() {
         <div>
           <h2 className="mb-4">Book Your Session</h2>
           <p className="text-lg text-text-muted mb-8">
-            Ready to start your next piece? Let&apos;s make it unforgettable.
+            Ready to start your next piece?
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Full Name */}
             <div>
-              <label htmlFor="fullName" className="block text-sm font-medium mb-2">
-                Full Name *
-              </label>
+              <label className="block text-sm font-medium mb-2">Full Name *</label>
               <input
-                type="text"
-                id="fullName"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
                 required
-                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="input-field w-full p-3 rounded-lg bg-white/5 border border-white/10"
               />
-              {errors.fullName && (
-                <p className="text-red-400 text-sm mt-1">{errors.fullName}</p>
-              )}
             </div>
 
+            {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2">
-                Email *
-              </label>
+              <label className="block text-sm font-medium mb-2">Email *</label>
               <input
                 type="email"
-                id="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-              />
-              {errors.email && (
-                <p className="text-red-400 text-sm mt-1">{errors.email}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium mb-2">
-                Phone
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="input-field w-full p-3 rounded-lg bg-white/5 border border-white/10"
               />
             </div>
 
+            {/* Tattoo Idea */}
             <div>
-              <label htmlFor="tattooIdea" className="block text-sm font-medium mb-2">
-                Tattoo Idea * (min 20 characters)
-              </label>
+              <label className="block text-sm font-medium mb-2">Tattoo Idea *</label>
               <textarea
-                id="tattooIdea"
                 name="tattooIdea"
                 value={formData.tattooIdea}
                 onChange={handleChange}
-                rows={4}
                 required
-                className="textarea-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                rows={4}
+                className="textarea-field w-full p-3 rounded-lg bg-white/5 border border-white/10"
               />
-              {errors.tattooIdea && (
-                <p className="text-red-400 text-sm mt-1">{errors.tattooIdea}</p>
-              )}
             </div>
 
+            {/* Placement */}
             <div>
-              <label htmlFor="placement" className="block text-sm font-medium mb-2">
-                Placement *
-              </label>
+              <label className="block text-sm font-medium mb-2">Placement *</label>
               <input
-                type="text"
-                id="placement"
                 name="placement"
                 value={formData.placement}
                 onChange={handleChange}
-                placeholder="e.g., Upper arm, Back, Chest"
                 required
-                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-              />
-              {errors.placement && (
-                <p className="text-red-400 text-sm mt-1">{errors.placement}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="budget" className="block text-sm font-medium mb-2">
-                Budget
-              </label>
-              <select
-                id="budget"
-                name="budget"
-                value={formData.budget}
-                onChange={handleChange}
-                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-              >
-                <option value="">Select a budget range</option>
-                <option value="50-150">£50 - £150</option>
-                <option value="150-300">£150 - £300</option>
-                <option value="300-500">£300 - £500</option>
-                <option value="500+">£500+</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="preferredDate" className="block text-sm font-medium mb-2">
-                Preferred Date
-              </label>
-              <input
-                type="date"
-                id="preferredDate"
-                name="preferredDate"
-                value={formData.preferredDate}
-                onChange={handleChange}
-                className="input-field w-full p-3 rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                className="input-field w-full p-3 rounded-lg bg-white/5 border border-white/10"
               />
             </div>
 
+            {/* Consent */}
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
-                id="gdprConsent"
                 name="gdprConsent"
                 checked={formData.gdprConsent}
                 onChange={handleChange}
                 required
-                className="checkbox-field mt-1 w-4 h-4 rounded border-white/20 bg-white/5"
+                className="checkbox-field mt-1 w-4 h-4"
               />
-              <label htmlFor="gdprConsent" className="text-sm text-text-muted">
+              <label className="text-sm text-text-muted">
                 I agree to be contacted regarding my enquiry. *
               </label>
             </div>
-            {errors.gdprConsent && (
-              <p className="text-red-400 text-sm">{errors.gdprConsent}</p>
-            )}
 
             {/* reCAPTCHA */}
             <div className="flex justify-center">
               <ReCAPTCHA
                 ref={recaptchaRef}
                 sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                onChange={(token) => setRecaptchaToken(token || '')}
-                theme="dark"
+                onChange={(t) => setRecaptchaToken(t || '')}
               />
             </div>
-            {errors.recaptcha && (
-              <p className="text-red-400 text-sm text-center">{errors.recaptcha}</p>
-            )}
-            {errors.submit && (
-              <p className="text-red-400 text-sm text-center">{errors.submit}</p>
-            )}
 
-            <div className="mt-4">
-              <label className="block mb-2 font-semibold">Reference images (optional)</label>
-              <ImageUploader onUploaded={setReferenceUrls} />
-            </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isSubmitting}
-              className="w-full text-lg"
-            >
+            {/* Submit */}
+            <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full">
               {isSubmitting ? 'Submitting...' : 'Submit Booking Request'}
             </Button>
           </form>
-        </div>
-
-        <div className="hidden lg:block">
-          <img
-            src="https://images.pexels.com/photos/4124116/pexels-photo-4124116.jpeg?auto=compress&cs=tinysrgb&w=800"
-            alt="Tattoo studio environment"
-            className="w-full h-full object-cover rounded-brand shadow-2xl"
-          />
         </div>
       </div>
     </Section>
